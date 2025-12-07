@@ -36,27 +36,39 @@
   </div>
 
   <script>
-    // Initialize Google Identity Services
-    function handleCredentialResponse(response) {
+    async function handleCredentialResponse(response) {
       console.log('Credential received:', response.credential);
 
-      // Decode JWT to get user info
       const payload = parseJwt(response.credential);
       console.log('User:', payload);
 
-      // Store token in sessionStorage
-      sessionStorage.setItem('gis_token', response.credential);
-      sessionStorage.setItem('user_info', JSON.stringify(payload));
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            token: response.credential,
+            userInfo: payload
+          })
+        });
 
-      // VULNERABLE: Handle redirect parameter without sanitization
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirect = urlParams.get('redirect');
+        if (!res.ok) {
+          throw new Error('Login failed');
+        }
 
-      if (redirect) {
-        // DOM XSS vulnerability - directly assigning to location.href
-        location.href = redirect;
-      } else {
-        location.href = '/profile';
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirect = urlParams.get('redirect');
+
+        if (redirect) {
+          location.href = redirect;
+        } else {
+          location.href = '/profile';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed. Please try again.');
       }
     }
 
@@ -69,7 +81,6 @@
       return JSON.parse(jsonPayload);
     }
 
-    // Popup sign-in
     document.getElementById('popupSignIn').addEventListener('click', function() {
       google.accounts.id.initialize({
         client_id: '<%= clientId %>',
@@ -83,7 +94,6 @@
       });
     });
 
-    // Initialize One Tap
     google.accounts.id.initialize({
       client_id: '<%= clientId %>',
       callback: handleCredentialResponse

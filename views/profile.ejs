@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Winky+Sans:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="container">
@@ -22,41 +21,50 @@
   </div>
 
   <script>
-    // Check if user is logged in
-    const token = sessionStorage.getItem('gis_token');
-    const userInfo = sessionStorage.getItem('user_info');
+    async function loadUserProfile() {
+      try {
+        const res = await fetch('/api/user');
 
-    if (!token || !userInfo) {
-      location.href = '/login';
-    } else {
-      const user = JSON.parse(userInfo);
-      const profileContent = document.getElementById('profile-content');
+        if (!res.ok) {
+          location.href = '/login';
+          return;
+        }
 
-      profileContent.innerHTML = `
-        <div class="profile-card">
-          <img src="${user.picture}" alt="Profile Picture" class="profile-picture">
-          <h2>${user.name}</h2>
-          <p class="email">${user.email}</p>
-          <div class="user-details">
-            <p><strong>Given Name:</strong> ${user.given_name || 'N/A'}</p>
-            <p><strong>Family Name:</strong> ${user.family_name || 'N/A'}</p>
-            <p><strong>Email Verified:</strong> ${user.email_verified ? 'Yes' : 'No'}</p>
+        const data = await res.json();
+        const user = data.userInfo;
+        const profileContent = document.getElementById('profile-content');
+
+        profileContent.innerHTML = `
+          <div class="profile-card">
+            <img src="${user.picture}" alt="Profile Picture" class="profile-picture">
+            <h2>${user.name}</h2>
+            <p class="email">${user.email}</p>
+            <div class="user-details">
+              <p><strong>Given Name:</strong> ${user.given_name || 'N/A'}</p>
+              <p><strong>Family Name:</strong> ${user.family_name || 'N/A'}</p>
+              <p><strong>Email Verified:</strong> ${user.email_verified ? 'Yes' : 'No'}</p>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        location.href = '/login';
+      }
     }
 
-    // Sign out functionality
-    document.getElementById('signOutBtn').addEventListener('click', function() {
-      google.accounts.id.disableAutoSelect();
-      sessionStorage.removeItem('gis_token');
-      sessionStorage.removeItem('user_info');
-      location.href = '/login';
-    });
+    loadUserProfile();
 
-    // Initialize GIS for sign out
-    google.accounts.id.initialize({
-      client_id: '<%= clientId %>'
+    document.getElementById('signOutBtn').addEventListener('click', async function() {
+      try {
+        await fetch('/api/logout', {
+          method: 'POST'
+        });
+
+        location.href = '/login';
+      } catch (error) {
+        console.error('Logout error:', error);
+        location.href = '/login';
+      }
     });
   </script>
 </body>
